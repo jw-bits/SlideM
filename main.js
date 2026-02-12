@@ -5,12 +5,13 @@ const config = {
     // List of image filenames. 
     // Note: Browser JavaScript cannot automatically list directory contents from the file system 
     // for security reasons. You must list your files here.
-    displayDuration: 20000, // 20 seconds
+    displayDuration: 10000, // 10 seconds
 };
 
 const container = document.getElementById('image-container');
 let currentIndex = 0;
 let currentImageElement = null;
+let hasBeenClicked = false;
 
 // Transition effects defined in CSS
 const transitions = [
@@ -33,10 +34,10 @@ function loadMedia(index) {
 
     if (isVideo) {
         element = document.createElement('video');
-        element.muted = true; // Required for autoplay in most browsers
+        element.muted = !hasBeenClicked; // Required for autoplay in most browsers
         element.autoplay = true;
-        element.loop = true;
-        element.playsInline = true;
+        element.loop = false;
+        element.setAttribute('playsinline', '');
     } else {
         element = document.createElement('img');
     }
@@ -56,6 +57,13 @@ function showNextImage() {
     
     container.appendChild(nextImage);
 
+    if (nextImage.tagName === 'VIDEO') {
+        nextImage.play().catch(e => console.error("Video play failed:", e));
+        nextImage.addEventListener('ended', showNextImage);
+    } else {
+        setTimeout(showNextImage, config.displayDuration);
+    }
+
     // Force reflow to ensure the browser registers the starting state before transitioning
     void nextImage.offsetWidth;
 
@@ -65,8 +73,11 @@ function showNextImage() {
 
     // Clean up the old image after transition
     const oldImage = currentImageElement;
-    oldImage.classList.add(transitions[0]);
+
     if (oldImage) {
+        oldImage.classList.remove('active');
+        oldImage.classList.add('start-fade');
+
         // Wait for transition to finish (1s defined in CSS) plus a buffer
         setTimeout(() => {
             if (oldImage.parentNode) {
@@ -97,11 +108,19 @@ async function startApp() {
     const firstImg = loadMedia(0);
     firstImg.classList.add('active');
     container.appendChild(firstImg);
-    currentImageElement = firstImg;
 
-    // Start the loop
-    setInterval(showNextImage, config.displayDuration);
+    if (firstImg.tagName === 'VIDEO') {
+        firstImg.play().catch(e => console.error("Video play failed:", e));
+        firstImg.addEventListener('ended', showNextImage);
+    } else {
+        setTimeout(showNextImage, config.displayDuration);
+    }
+
+    currentImageElement = firstImg;
 }
 
 // Initialize
 document.addEventListener('DOMContentLoaded', startApp);
+document.addEventListener("click", () => {
+    hasBeenClicked = true;
+});
